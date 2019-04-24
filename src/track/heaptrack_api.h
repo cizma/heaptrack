@@ -60,6 +60,7 @@ extern "C" {
 __attribute__((weak)) void heaptrack_malloc(void* ptr, size_t size);
 __attribute__((weak)) void heaptrack_realloc(void* ptr_in, size_t size, void* ptr_out);
 __attribute__((weak)) void heaptrack_free(void* ptr);
+__attribute__((weak)) void heaptrack_stamp(char* name);
 
 #ifdef __cplusplus
 }
@@ -76,6 +77,10 @@ __attribute__((weak)) void heaptrack_free(void* ptr);
 #define heaptrack_report_free(ptr)                                                                                     \
     if (heaptrack_free)                                                                                                \
     heaptrack_free(ptr)
+
+#define heaptrack_report_stamp(name)                                                                                   \
+    if (heaptrack_stamp)                                                                                               \
+    heaptrack_stamp(name)
 
 #else // HEAPTRACK_API_DLSYM
 
@@ -103,8 +108,9 @@ struct heaptrack_api_t
     void (*malloc)(void*, size_t);
     void (*free)(void*);
     void (*realloc)(void*, size_t, void*);
+    void (*stamp)(char*);
 };
-static struct heaptrack_api_t heaptrack_api = {0, 0, 0};
+static struct heaptrack_api_t heaptrack_api = {0, 0, 0, 0};
 
 void heaptrack_init_api()
 {
@@ -121,6 +127,10 @@ void heaptrack_init_api()
         sym = dlsym(RTLD_NEXT, "heaptrack_free");
         if (sym)
             heaptrack_api.free = (void (*)(void*))sym;
+
+        sym = dlsym(RTLD_NEXT, "heaptrack_stamp");
+        if (sym)
+            heaptrack_api.stamp = (void (*)(char*))sym;
 
         initialized = 1;
     }
@@ -145,6 +155,13 @@ void heaptrack_init_api()
         heaptrack_init_api();                                                                                          \
         if (heaptrack_api.free)                                                                                        \
             heaptrack_api.free(ptr);                                                                                   \
+    } while (0)
+
+#define heaptrack_report_stamp(name)                                                                                   \
+    do {                                                                                                               \
+        heaptrack_init_api();                                                                                          \
+        if (heaptrack_api.stamp)                                                                                       \
+            heaptrack_api.stamp(name);                                                                                 \
     } while (0)
 
 #endif // HEAPTRACK_API_DLSYM

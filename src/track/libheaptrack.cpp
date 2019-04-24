@@ -475,6 +475,16 @@ public:
         s_data->out.writeHexLine('-', reinterpret_cast<uintptr_t>(ptr));
     }
 
+    void handleStamp(char* name)
+    {
+        if (!s_data || !s_data->out.canWrite()) {
+            return;
+        }
+
+	writeTimestamp();
+        s_data->out.write("p %s\n", name);
+    }
+
 private:
     static int dl_iterate_phdr_callback(struct dl_phdr_info* info, size_t /*size*/, void* data)
     {
@@ -747,6 +757,18 @@ void heaptrack_realloc(void* ptr_in, size_t size, void* ptr_out)
             heaptrack.handleFree(ptr_in);
         }
         heaptrack.handleMalloc(ptr_out, size, trace);
+    }
+}
+
+void heaptrack_stamp(char* name)
+{
+    if (name && !RecursionGuard::isActive) {
+        RecursionGuard guard;
+
+        debugLog<VeryVerboseOutput>("heaptrack_stamp(%s)", name);
+
+        HeapTrack heaptrack(guard);
+        heaptrack.handleStamp(name);
     }
 }
 
